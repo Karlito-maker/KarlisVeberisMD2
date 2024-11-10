@@ -1,4 +1,3 @@
-// MainPage.xaml.cs
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -10,50 +9,48 @@ namespace KarlisVeberisMD2
 {
     public partial class MainPage : ContentPage, INotifyPropertyChanged
     {
-        // DataManager instances datu pārvaldībai
+        // Instance of DataManager for managing data operations
         private DataManager dm;
-        // Faila ceļš datu saglabāšanai un ielādei
-        private string filePath = "C:\\Temp\\data.txt";
+        private readonly string filePath = "C:\\Temp\\data.txt";
 
-        // ObservableCollections, lai piesaistītu datus ListView
+        // ObservableCollections for data binding
         public ObservableCollection<Teacher> Teachers { get; set; } = new ObservableCollection<Teacher>();
         public ObservableCollection<Student> Students { get; set; } = new ObservableCollection<Student>();
         public ObservableCollection<Course> Courses { get; set; } = new ObservableCollection<Course>();
         public ObservableCollection<Assignment> Assignments { get; set; } = new ObservableCollection<Assignment>();
         public ObservableCollection<Submission> Submissions { get; set; } = new ObservableCollection<Submission>();
 
-        // Izvēlētie objekti labojumiem un dzēšanai
-        private Assignment selectedAssignment;
-        private Submission selectedSubmission;
+        // Selected items for editing and deleting
+        private Assignment? selectedAssignment;
+        private Submission? selectedSubmission;
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        // Implementing PropertyChanged event for INotifyPropertyChanged
+        public new event PropertyChangedEventHandler? PropertyChanged;
 
-        protected void OnPropertyChanged(string propertyName)
+        protected override void OnPropertyChanged(string propertyName)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        public Assignment SelectedAssignment
+        public Assignment? SelectedAssignment
         {
             get => selectedAssignment;
             set
             {
                 selectedAssignment = value;
                 OnPropertyChanged(nameof(SelectedAssignment));
-                // Iespējo vai atspējo pogas atkarībā no izvēles
                 EditAssignmentButton.IsEnabled = selectedAssignment != null;
                 DeleteAssignmentButton.IsEnabled = selectedAssignment != null;
             }
         }
 
-        public Submission SelectedSubmission
+        public Submission? SelectedSubmission
         {
             get => selectedSubmission;
             set
             {
                 selectedSubmission = value;
                 OnPropertyChanged(nameof(SelectedSubmission));
-                // Iespējo vai atspējo pogas atkarībā no izvēles
                 EditSubmissionButton.IsEnabled = selectedSubmission != null;
                 DeleteSubmissionButton.IsEnabled = selectedSubmission != null;
             }
@@ -62,13 +59,31 @@ namespace KarlisVeberisMD2
         public MainPage()
         {
             InitializeComponent();
-
             dm = new DataManager(filePath);
-
             BindingContext = this;
         }
 
-        // Notikums pogai "Izveidot testa datus"
+        // Method to update ObservableCollections with data from DataManager
+        private void UpdateCollections()
+        {
+            Teachers.Clear();
+            Students.Clear();
+            Courses.Clear();
+            Assignments.Clear();
+            Submissions.Clear();
+
+            foreach (var person in dm.GetPersons())
+            {
+                if (person is Teacher teacher) Teachers.Add(teacher);
+                else if (person is Student student) Students.Add(student);
+            }
+
+            foreach (var course in dm.GetCourses()) Courses.Add(course);
+            foreach (var assignment in dm.GetAssignments()) Assignments.Add(assignment);
+            foreach (var submission in dm.GetSubmissions()) Submissions.Add(submission);
+        }
+
+        // Create test data and update collections
         private void OnCreateTestDataClicked(object sender, EventArgs e)
         {
             try
@@ -78,11 +93,11 @@ namespace KarlisVeberisMD2
             }
             catch (Exception ex)
             {
-                DisplayAlert("Kļūda", $"Kļūda izveidojot testa datus: {ex.Message}", "OK");
+                DisplayAlert("Error", $"Error creating test data: {ex.Message}", "OK");
             }
         }
 
-        // Notikums pogai "Ielādēt datus no faila"
+        // Load data from file and update collections
         private void OnLoadDataClicked(object sender, EventArgs e)
         {
             try
@@ -92,211 +107,146 @@ namespace KarlisVeberisMD2
             }
             catch (Exception ex)
             {
-                DisplayAlert("Kļūda", $"Kļūda ielādējot datus: {ex.Message}", "OK");
+                DisplayAlert("Error", $"Error loading data: {ex.Message}", "OK");
             }
         }
 
-        // Notikums pogai "Saglabāt datus failā"
+        // Save current data to file
         private void OnSaveDataClicked(object sender, EventArgs e)
         {
             try
             {
                 dm.Save(filePath);
-                DisplayAlert("Dati saglabāti", "Dati ir saglabāti failā.", "OK");
+                DisplayAlert("Data Saved", "Data has been saved to the file.", "OK");
             }
             catch (Exception ex)
             {
-                DisplayAlert("Kļūda", $"Kļūda saglabājot datus: {ex.Message}", "OK");
+                DisplayAlert("Error", $"Error saving data: {ex.Message}", "OK");
             }
         }
 
-        // Metode, lai atjauninātu kolekcijas no DataManager datiem
-        private void UpdateCollections()
-        {
-            Teachers.Clear();
-            Students.Clear();
-            Courses.Clear();
-            Assignments.Clear();
-            Submissions.Clear();
-
-            // Pievieno skolotājus un studentus attiecīgajās kolekcijās
-            foreach (var person in dm.GetPersons())
-            {
-                if (person is Teacher teacher)
-                {
-                    Teachers.Add(teacher);
-                }
-                else if (person is Student student)
-                {
-                    Students.Add(student);
-                }
-            }
-
-            // Pievieno kursus, uzdevumus un iesniegumus
-            foreach (var course in dm.GetCourses())
-            {
-                Courses.Add(course);
-            }
-
-            foreach (var assignment in dm.GetAssignments())
-            {
-                Assignments.Add(assignment);
-            }
-
-            foreach (var submission in dm.GetSubmissions())
-            {
-                Submissions.Add(submission);
-            }
-        }
-
-        // Notikums pogai "Pievienot studentu"
+        // Add a new student
         private async void OnAddStudentClicked(object sender, EventArgs e)
         {
             try
             {
-                // Ļauj lietotājam ievadīt studenta datus
-                var name = await DisplayPromptAsync("Studenta vārds", "Ievadiet vārdu:");
-                var surname = await DisplayPromptAsync("Studenta uzvārds", "Ievadiet uzvārdu:");
-                var genderStr = await DisplayActionSheet("Izvēlieties dzimumu", "Atcelt", null, "Vīrietis", "Sieviete");
-                var studentIdStr = await DisplayPromptAsync("Studenta ID numurs", "Ievadiet studenta ID numuru:");
+                var name = await DisplayPromptAsync("Student's Name", "Enter first name:");
+                var surname = await DisplayPromptAsync("Student's Surname", "Enter surname:");
+                var genderStr = await DisplayActionSheet("Select Gender", "Cancel", null, "Man", "Woman");
+                var studentIdStr = await DisplayPromptAsync("Student ID", "Enter ID number:");
 
                 if (int.TryParse(studentIdStr, out int studentIdNumber))
                 {
-                    var gender = genderStr == "Vīrietis" ? Gender.Man : Gender.Woman;
-                    var student = new Student(name, surname, gender, studentIdNumber);
+                    var gender = genderStr == "Man" ? Gender.Man : Gender.Woman;
+                    var student = new Student(name ?? "", surname ?? "", gender, studentIdNumber);
                     dm.AddPerson(student);
                     Students.Add(student);
                 }
                 else
                 {
-                    await DisplayAlert("Nederīgs ID", "Lūdzu, ievadiet derīgu studenta ID numuru.", "OK");
+                    await DisplayAlert("Invalid ID", "Please enter a valid student ID.", "OK");
                 }
             }
             catch (Exception ex)
             {
-                await DisplayAlert("Kļūda", $"Kļūda pievienojot studentu: {ex.Message}", "OK");
+                await DisplayAlert("Error", $"Error adding student: {ex.Message}", "OK");
             }
         }
 
-        // Notikums pogai "Pievienot uzdevumu"
+        // Add a new assignment
         private async void OnAddAssignmentClicked(object sender, EventArgs e)
         {
             try
             {
-                // Pārbauda, vai ir pieejami kursi
                 if (Courses.Count > 0)
                 {
-                    // Ļauj lietotājam izvēlēties kursu
                     var course = await SelectCourse();
                     if (course != null)
                     {
-                        // Ļauj ievadīt uzdevuma detaļas
-                        var description = await DisplayPromptAsync("Uzdevuma apraksts", "Ievadiet aprakstu:");
-                        var deadlineStr = await DisplayPromptAsync("Uzdevuma termiņš", "Ievadiet termiņu (gggg-mm-dd):");
+                        var description = await DisplayPromptAsync("Assignment Description", "Enter description:");
+                        var deadlineStr = await DisplayPromptAsync("Assignment Deadline", "Enter deadline (yyyy-mm-dd):");
                         if (DateTime.TryParse(deadlineStr, out DateTime deadline))
                         {
-                            var assignment = new Assignment(deadline, course, description);
+                            var assignment = new Assignment(deadline, course, description ?? "Default Description");
                             dm.AddAssignment(assignment);
                             Assignments.Add(assignment);
                         }
                         else
                         {
-                            await DisplayAlert("Nederīgs datums", "Lūdzu, ievadiet derīgu datumu.", "OK");
+                            await DisplayAlert("Invalid Date", "Please enter a valid date.", "OK");
                         }
                     }
                 }
                 else
                 {
-                    await DisplayAlert("Nav kursu", "Lūdzu, pievienojiet kursu pirms uzdevuma pievienošanas.", "OK");
+                    await DisplayAlert("No Courses", "Please add a course before adding an assignment.", "OK");
                 }
             }
             catch (Exception ex)
             {
-                await DisplayAlert("Kļūda", $"Kļūda pievienojot uzdevumu: {ex.Message}", "OK");
+                await DisplayAlert("Error", $"Error adding assignment: {ex.Message}", "OK");
             }
         }
 
-        // Palīgmetode kursa izvēlei
-        private async Task<Course> SelectCourse()
+        // Helper method to select a course
+        private async Task<Course?> SelectCourse()
         {
             var courseNames = Courses.Select(c => c.Name).ToArray();
-            var selectedName = await DisplayActionSheet("Izvēlieties kursu", "Atcelt", null, courseNames);
-            if (selectedName == "Atcelt" || string.IsNullOrEmpty(selectedName))
-                return null;
-
-            return Courses.FirstOrDefault(c => c.Name == selectedName);
+            var selectedName = await DisplayActionSheet("Select Course", "Cancel", null, courseNames);
+            return selectedName == "Cancel" || string.IsNullOrEmpty(selectedName) ? null : Courses.FirstOrDefault(c => c.Name == selectedName);
         }
 
-        // Notikums pogai "Labot uzdevumu"
+        // Edit an assignment
         private async void OnEditAssignmentClicked(object sender, EventArgs e)
         {
             if (SelectedAssignment != null)
             {
-                try
+                var newDescription = await DisplayPromptAsync("Edit Assignment Description", "Enter new description:", initialValue: SelectedAssignment.Description);
+                var newDeadlineStr = await DisplayPromptAsync("Edit Assignment Deadline", "Enter new deadline (yyyy-mm-dd):", initialValue: SelectedAssignment.Deadline.ToString("yyyy-MM-dd"));
+
+                if (DateTime.TryParse(newDeadlineStr, out DateTime newDeadline) && !string.IsNullOrEmpty(newDescription))
                 {
-                    // Ļauj labot uzdevuma detaļas
-                    var description = await DisplayPromptAsync("Labot aprakstu", "Ievadiet jaunu aprakstu:", initialValue: SelectedAssignment.Description);
-                    var deadlineStr = await DisplayPromptAsync("Labot termiņu", "Ievadiet jaunu termiņu (gggg-mm-dd):", initialValue: SelectedAssignment.Deadline.ToString("yyyy-MM-dd"));
-                    if (DateTime.TryParse(deadlineStr, out DateTime deadline))
-                    {
-                        SelectedAssignment.Description = description;
-                        SelectedAssignment.Deadline = deadline;
-                    }
-                    else
-                    {
-                        await DisplayAlert("Nederīgs datums", "Lūdzu, ievadiet derīgu datumu.", "OK");
-                    }
+                    dm.UpdateAssignment(SelectedAssignment, newDeadline, newDescription);
+                    UpdateCollections();
                 }
-                catch (Exception ex)
+                else
                 {
-                    await DisplayAlert("Kļūda", $"Kļūda labojot uzdevumu: {ex.Message}", "OK");
+                    await DisplayAlert("Invalid Data", "Please enter valid data for the assignment.", "OK");
                 }
             }
         }
 
-        // Notikums pogai "Dzēst uzdevumu"
+        // Delete an assignment
         private async void OnDeleteAssignmentClicked(object sender, EventArgs e)
         {
             if (SelectedAssignment != null)
             {
-                try
+                bool confirm = await DisplayAlert("Confirm Delete", "Are you sure you want to delete this assignment?", "Yes", "No");
+                if (confirm)
                 {
-                    bool confirm = await DisplayAlert("Apstiprināt", "Vai tiešām vēlaties dzēst šo uzdevumu?", "Jā", "Nē");
-                    if (confirm)
-                    {
-                        dm.RemoveAssignment(SelectedAssignment);
-                        Assignments.Remove(SelectedAssignment);
-                        SelectedAssignment = null;
-                        // Atspējo pogas
-                        EditAssignmentButton.IsEnabled = false;
-                        DeleteAssignmentButton.IsEnabled = false;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    await DisplayAlert("Kļūda", $"Kļūda dzēšot uzdevumu: {ex.Message}", "OK");
+                    dm.DeleteAssignment(SelectedAssignment);
+                    Assignments.Remove(SelectedAssignment);
+                    SelectedAssignment = null;
                 }
             }
         }
 
-        // Notikums pogai "Pievienot iesniegumu"
+        // Add a new submission
         private async void OnAddSubmissionClicked(object sender, EventArgs e)
         {
             try
             {
-                // Pārbauda, vai ir uzdevumi un studenti
                 if (Assignments.Count > 0 && Students.Count > 0)
                 {
-                    // Ļauj izvēlēties uzdevumu un studentu
                     var assignment = await SelectAssignment();
                     var student = await SelectStudent();
 
                     if (assignment != null && student != null)
                     {
-                        var submissionTimeStr = await DisplayPromptAsync("Iesniegšanas laiks", "Ievadiet iesniegšanas laiku (gggg-mm-dd hh:mm):");
+                        var submissionTimeStr = await DisplayPromptAsync("Submission Time", "Enter time (yyyy-mm-dd hh:mm):");
                         if (DateTime.TryParse(submissionTimeStr, out DateTime submissionTime))
                         {
-                            var scoreStr = await DisplayPromptAsync("Punkti", "Ievadiet punktu skaitu:");
+                            var scoreStr = await DisplayPromptAsync("Score", "Enter score:");
                             if (int.TryParse(scoreStr, out int score))
                             {
                                 var submission = new Submission(assignment, student, submissionTime, score);
@@ -305,103 +255,73 @@ namespace KarlisVeberisMD2
                             }
                             else
                             {
-                                await DisplayAlert("Nederīgs punktu skaits", "Lūdzu, ievadiet derīgu punktu skaitu.", "OK");
+                                await DisplayAlert("Invalid Score", "Please enter a valid score.", "OK");
                             }
                         }
                         else
                         {
-                            await DisplayAlert("Nederīgs datums", "Lūdzu, ievadiet derīgu datumu un laiku.", "OK");
+                            await DisplayAlert("Invalid Date", "Please enter a valid date and time.", "OK");
                         }
                     }
                 }
                 else
                 {
-                    await DisplayAlert("Trūkst datu", "Lūdzu, pievienojiet uzdevumus un studentus pirms iesnieguma pievienošanas.", "OK");
+                    await DisplayAlert("Missing Data", "Please add assignments and students before adding a submission.", "OK");
                 }
             }
             catch (Exception ex)
             {
-                await DisplayAlert("Kļūda", $"Kļūda pievienojot iesniegumu: {ex.Message}", "OK");
+                await DisplayAlert("Error", $"Error adding submission: {ex.Message}", "OK");
             }
         }
 
-        // Palīgmetode uzdevuma izvēlei
-        private async Task<Assignment> SelectAssignment()
+        // Helper method to select an assignment
+        private async Task<Assignment?> SelectAssignment()
         {
             var assignmentDescriptions = Assignments.Select(a => a.Description).ToArray();
-            var selectedDescription = await DisplayActionSheet("Izvēlieties uzdevumu", "Atcelt", null, assignmentDescriptions);
-            if (selectedDescription == "Atcelt" || string.IsNullOrEmpty(selectedDescription))
-                return null;
-
-            return Assignments.FirstOrDefault(a => a.Description == selectedDescription);
+            var selectedDescription = await DisplayActionSheet("Select Assignment", "Cancel", null, assignmentDescriptions);
+            return selectedDescription == "Cancel" || string.IsNullOrEmpty(selectedDescription) ? null : Assignments.FirstOrDefault(a => a.Description == selectedDescription);
         }
 
-        // Palīgmetode studenta izvēlei
-        private async Task<Student> SelectStudent()
+        // Helper method to select a student
+        private async Task<Student?> SelectStudent()
         {
             var studentNames = Students.Select(s => s.FullName).ToArray();
-            var selectedName = await DisplayActionSheet("Izvēlieties studentu", "Atcelt", null, studentNames);
-            if (selectedName == "Atcelt" || string.IsNullOrEmpty(selectedName))
-                return null;
-
-            return Students.FirstOrDefault(s => s.FullName == selectedName);
+            var selectedName = await DisplayActionSheet("Select Student", "Cancel", null, studentNames);
+            return selectedName == "Cancel" || string.IsNullOrEmpty(selectedName) ? null : Students.FirstOrDefault(s => s.FullName == selectedName);
         }
 
-        // Notikums pogai "Labot iesniegumu"
+        // Edit a submission
         private async void OnEditSubmissionClicked(object sender, EventArgs e)
         {
             if (SelectedSubmission != null)
             {
-                try
+                var newSubmissionTimeStr = await DisplayPromptAsync("Edit Submission Time", "Enter new time (yyyy-mm-dd hh:mm):", initialValue: SelectedSubmission.SubmissionTime.ToString("yyyy-MM-dd HH:mm"));
+                var newScoreStr = await DisplayPromptAsync("Edit Score", "Enter new score:", initialValue: SelectedSubmission.Score.ToString());
+
+                if (DateTime.TryParse(newSubmissionTimeStr, out DateTime newSubmissionTime) && int.TryParse(newScoreStr, out int newScore))
                 {
-                    // Ļauj labot iesnieguma detaļas
-                    var submissionTimeStr = await DisplayPromptAsync("Labot iesniegšanas laiku", "Ievadiet jaunu iesniegšanas laiku (gggg-mm-dd hh:mm):", initialValue: SelectedSubmission.SubmissionTime.ToString("yyyy-MM-dd HH:mm"));
-                    if (DateTime.TryParse(submissionTimeStr, out DateTime submissionTime))
-                    {
-                        var scoreStr = await DisplayPromptAsync("Labot punktus", "Ievadiet jaunu punktu skaitu:", initialValue: SelectedSubmission.Score.ToString());
-                        if (int.TryParse(scoreStr, out int score))
-                        {
-                            SelectedSubmission.SubmissionTime = submissionTime;
-                            SelectedSubmission.Score = score;
-                        }
-                        else
-                        {
-                            await DisplayAlert("Nederīgs punktu skaits", "Lūdzu, ievadiet derīgu punktu skaitu.", "OK");
-                        }
-                    }
-                    else
-                    {
-                        await DisplayAlert("Nederīgs datums", "Lūdzu, ievadiet derīgu datumu un laiku.", "OK");
-                    }
+                    dm.UpdateSubmission(SelectedSubmission, newSubmissionTime, newScore);
+                    UpdateCollections();
                 }
-                catch (Exception ex)
+                else
                 {
-                    await DisplayAlert("Kļūda", $"Kļūda labojot iesniegumu: {ex.Message}", "OK");
+                    await DisplayAlert("Invalid Data", "Please enter valid data for the submission.", "OK");
                 }
             }
         }
 
-        // Notikums pogai "Dzēst iesniegumu"
+        // Delete a submission
         private async void OnDeleteSubmissionClicked(object sender, EventArgs e)
         {
             if (SelectedSubmission != null)
             {
-                try
+                bool confirm = await DisplayAlert("Confirm Delete", "Are you sure you want to delete this submission?", "Yes", "No");
+                if (confirm)
                 {
-                    bool confirm = await DisplayAlert("Apstiprināt", "Vai tiešām vēlaties dzēst šo iesniegumu?", "Jā", "Nē");
-                    if (confirm)
-                    {
-                        dm.RemoveSubmission(SelectedSubmission);
-                        Submissions.Remove(SelectedSubmission);
-                        SelectedSubmission = null;
-                        // Atspējo pogas
-                        EditSubmissionButton.IsEnabled = false;
-                        DeleteSubmissionButton.IsEnabled = false;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    await DisplayAlert("Kļūda", $"Kļūda dzēšot iesniegumu: {ex.Message}", "OK");
+                    dm.DeleteSubmission(SelectedSubmission);
+                    Submissions.Remove(SelectedSubmission);
+                    SelectedSubmission = null;
                 }
             }
         }
