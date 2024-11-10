@@ -6,12 +6,13 @@
 
     <ScrollView>
         <StackLayout Padding="10">
-            <!-- Pogas datu operācijām -->
+
+            <!-- Data Operation Buttons -->
             <Button Text="Izveidot testa datus" Clicked="OnCreateTestDataClicked"/>
             <Button Text="Ielādēt datus no faila" Clicked="OnLoadDataClicked"/>
             <Button Text="Saglabāt datus failā" Clicked="OnSaveDataClicked"/>
 
-            <!-- Skolotāju saraksts -->
+            <!-- Teacher List -->
             <Label Text="Skolotāji" FontAttributes="Bold" Margin="0,10,0,0"/>
             <ListView x:Name="TeachersListView" HeightRequest="100"
                       ItemsSource="{Binding Teachers}">
@@ -22,7 +23,7 @@
                 </ListView.ItemTemplate>
             </ListView>
 
-            <!-- Studentu saraksts -->
+            <!-- Student List -->
             <Label Text="Studenti" FontAttributes="Bold" Margin="0,10,0,0"/>
             <ListView x:Name="StudentsListView" HeightRequest="100"
                       ItemsSource="{Binding Students}">
@@ -34,7 +35,7 @@
             </ListView>
             <Button Text="Pievienot studentu" Clicked="OnAddStudentClicked"/>
 
-            <!-- Kursu saraksts -->
+            <!-- Course List -->
             <Label Text="Kursi" FontAttributes="Bold" Margin="0,10,0,0"/>
             <ListView x:Name="CoursesListView" HeightRequest="100"
                       ItemsSource="{Binding Courses}">
@@ -45,7 +46,7 @@
                 </ListView.ItemTemplate>
             </ListView>
 
-            <!-- Uzdevumu saraksts -->
+            <!-- Assignment List with Edit and Delete Options -->
             <Label Text="Uzdevumi" FontAttributes="Bold" Margin="0,10,0,0"/>
             <ListView x:Name="AssignmentsListView" HeightRequest="100"
                       ItemsSource="{Binding Assignments}"
@@ -62,7 +63,7 @@
                 <Button x:Name="DeleteAssignmentButton" Text="Dzēst uzdevumu" Clicked="OnDeleteAssignmentClicked" IsEnabled="False"/>
             </StackLayout>
 
-            <!-- Iesniegumu saraksts -->
+            <!-- Submission List with Edit and Delete Options -->
             <Label Text="Iesniegumi" FontAttributes="Bold" Margin="0,10,0,0"/>
             <ListView x:Name="SubmissionsListView" HeightRequest="100"
                       ItemsSource="{Binding Submissions}"
@@ -82,4 +83,3 @@
         </StackLayout>
     </ScrollView>
 </ContentPage>
-
