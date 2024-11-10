@@ -1,4 +1,3 @@
-// DataManager.cs
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,82 +5,68 @@ using System.Linq;
 
 public class DataManager : IDataManager
 {
-    // Datu kolekcijas
     private DataCollection data = new DataCollection();
     private readonly string _filePath;
 
-    // Konstruktors, kas uzstāda faila ceļu
     public DataManager(string filePath)
     {
         _filePath = filePath;
     }
 
-    // Metode, kas atgriež visu datu informāciju kā tekstu
-    public string Print()
+    // Method to add a new assignment
+    public void AddAssignment(Assignment assignment)
     {
-        return string.Join(Environment.NewLine,
-            data.Persons.Select(p => p.ToString()).Concat(
-            data.Courses.Select(c => c.ToString())).Concat(
-            data.Assignments.Select(a => a.ToString())).Concat(
-            data.Submissions.Select(s => s.ToString())));
+        data.Assignments.Add(assignment);
     }
 
-    // Metode, kas saglabā datus norādītajā failā
-    public void Save(string path)
+    // Method to add a new person (either a Teacher or Student)
+    public void AddPerson(Person person)
     {
-        try
-        {
-            using (StreamWriter writer = new StreamWriter(path))
-            {
-                // Saglabā Persons
-                foreach (var person in data.Persons)
-                {
-                    if (person is Teacher teacher)
-                    {
-                        writer.WriteLine($"Teacher|{teacher.Name}|{teacher.Surname}|{teacher.Gender}|{teacher.ContractDate}");
-                    }
-                    else if (person is Student student)
-                    {
-                        writer.WriteLine($"Student|{student.Name}|{student.Surname}|{student.Gender}|{student.StudentIdNumber}");
-                    }
-                }
-
-                // Saglabā Courses
-                foreach (var course in data.Courses)
-                {
-                    writer.WriteLine($"Course|{course.Name}|{course.Teacher.Name}|{course.Teacher.Surname}");
-                }
-
-                // Saglabā Assignments
-                foreach (var assignment in data.Assignments)
-                {
-                    writer.WriteLine($"Assignment|{assignment.Deadline}|{assignment.Course.Name}|{assignment.Description}");
-                }
-
-                // Saglabā Submissions
-                foreach (var submission in data.Submissions)
-                {
-                    writer.WriteLine($"Submission|{submission.Assignment.Description}|{submission.Student.Name}|{submission.Student.Surname}|{submission.SubmissionTime}|{submission.Score}");
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            // Apstrādā kļūdas
-            Console.WriteLine($"Kļūda saglabājot datus: {ex.Message}");
-        }
+        data.Persons.Add(person);
     }
 
-    // Metode, kas ielādē datus no norādītā faila
+    // Method to add a new submission
+    public void AddSubmission(Submission submission)
+    {
+        data.Submissions.Add(submission);
+    }
+
+    // Method to update an existing assignment
+    public void UpdateAssignment(Assignment assignment, DateTime newDeadline, string newDescription)
+    {
+        assignment.Deadline = newDeadline;
+        assignment.Description = newDescription;
+    }
+
+    // Method to update an existing submission
+    public void UpdateSubmission(Submission submission, DateTime newSubmissionTime, int newScore)
+    {
+        submission.SubmissionTime = newSubmissionTime;
+        submission.Score = newScore;
+    }
+
+    // Method to delete an assignment
+    public void DeleteAssignment(Assignment assignment)
+    {
+        data.Assignments.Remove(assignment);
+    }
+
+    // Method to delete a submission
+    public void DeleteSubmission(Submission submission)
+    {
+        data.Submissions.Remove(submission);
+    }
+
+    // Method to load data from a file
     public void Load(string path)
     {
         if (File.Exists(path))
         {
-            data = new DataCollection(); // Atiestata datus
+            data = new DataCollection(); // Reset data
 
             var lines = File.ReadAllLines(path);
 
-            // Dictionāri, lai atjaunotu atsauces
+            // Dictionaries to restore references
             Dictionary<string, Teacher> teachersDict = new Dictionary<string, Teacher>();
             Dictionary<string, Student> studentsDict = new Dictionary<string, Student>();
             Dictionary<string, Course> coursesDict = new Dictionary<string, Course>();
@@ -100,10 +85,10 @@ public class DataManager : IDataManager
                         {
                             try
                             {
-                                var name = tokens[1];
-                                var surname = tokens[2];
-                                var gender = (Gender)Enum.Parse(typeof(Gender), tokens[3]);
-                                var contractDate = DateTime.Parse(tokens[4]);
+                                var name = tokens[1] ?? "Unknown";
+                                var surname = tokens[2] ?? "Unknown";
+                                var gender = Enum.TryParse(tokens[3], out Gender parsedGender) ? parsedGender : Gender.Man;
+                                var contractDate = DateTime.TryParse(tokens[4], out DateTime parsedDate) ? parsedDate : DateTime.Now;
 
                                 var teacher = new Teacher(name, surname, gender, contractDate);
                                 data.Persons.Add(teacher);
@@ -111,19 +96,20 @@ public class DataManager : IDataManager
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"Kļūda lasot skolotāju: {ex.Message}");
+                                Console.WriteLine($"Error reading teacher: {ex.Message}");
                             }
                         }
                         break;
+
                     case "Student":
                         if (tokens.Length >= 5)
                         {
                             try
                             {
-                                var name = tokens[1];
-                                var surname = tokens[2];
-                                var gender = (Gender)Enum.Parse(typeof(Gender), tokens[3]);
-                                var studentIdNumber = int.Parse(tokens[4]);
+                                var name = tokens[1] ?? "Unknown";
+                                var surname = tokens[2] ?? "Unknown";
+                                var gender = Enum.TryParse(tokens[3], out Gender parsedGender) ? parsedGender : Gender.Man;
+                                var studentIdNumber = int.TryParse(tokens[4], out int id) ? id : 0;
 
                                 var student = new Student(name, surname, gender, studentIdNumber);
                                 data.Persons.Add(student);
@@ -131,19 +117,20 @@ public class DataManager : IDataManager
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"Kļūda lasot studentu: {ex.Message}");
+                                Console.WriteLine($"Error reading student: {ex.Message}");
                             }
                         }
                         break;
+
                     case "Course":
                         if (tokens.Length >= 4)
                         {
                             try
                             {
-                                var courseName = tokens[1];
+                                var courseName = tokens[1] ?? "Unknown";
                                 var teacherName = tokens[2];
                                 var teacherSurname = tokens[3];
-                                if (teachersDict.TryGetValue($"{teacherName}|{teacherSurname}", out Teacher teacher))
+                                if (teachersDict.TryGetValue($"{teacherName}|{teacherSurname}", out Teacher? teacher))
                                 {
                                     var course = new Course(courseName, teacher);
                                     data.Courses.Add(course);
@@ -152,19 +139,21 @@ public class DataManager : IDataManager
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"Kļūda lasot kursu: {ex.Message}");
+                                Console.WriteLine($"Error reading course: {ex.Message}");
                             }
                         }
                         break;
+
                     case "Assignment":
                         if (tokens.Length >= 4)
                         {
                             try
                             {
-                                var deadline = DateTime.Parse(tokens[1]);
+                                var deadline = DateTime.TryParse(tokens[1], out DateTime parsedDate) ? parsedDate : DateTime.Now;
                                 var courseName = tokens[2];
-                                var description = tokens[3];
-                                if (coursesDict.TryGetValue(courseName, out Course course))
+                                var description = tokens[3] ?? "No Description";
+
+                                if (coursesDict.TryGetValue(courseName, out Course? course))
                                 {
                                     var assignment = new Assignment(deadline, course, description);
                                     data.Assignments.Add(assignment);
@@ -173,10 +162,11 @@ public class DataManager : IDataManager
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"Kļūda lasot uzdevumu: {ex.Message}");
+                                Console.WriteLine($"Error reading assignment: {ex.Message}");
                             }
                         }
                         break;
+
                     case "Submission":
                         if (tokens.Length >= 6)
                         {
@@ -185,10 +175,11 @@ public class DataManager : IDataManager
                                 var assignmentDescription = tokens[1];
                                 var studentName = tokens[2];
                                 var studentSurname = tokens[3];
-                                var submissionTime = DateTime.Parse(tokens[4]);
-                                var score = int.Parse(tokens[5]);
-                                if (assignmentsDict.TryGetValue(assignmentDescription, out Assignment assignment) &&
-                                    studentsDict.TryGetValue($"{studentName}|{studentSurname}", out Student student))
+                                var submissionTime = DateTime.TryParse(tokens[4], out DateTime parsedDate) ? parsedDate : DateTime.Now;
+                                var score = int.TryParse(tokens[5], out int parsedScore) ? parsedScore : 0;
+
+                                if (assignmentsDict.TryGetValue(assignmentDescription, out Assignment? assignment) &&
+                                    studentsDict.TryGetValue($"{studentName}|{studentSurname}", out Student? student))
                                 {
                                     var submission = new Submission(assignment, student, submissionTime, score);
                                     data.Submissions.Add(submission);
@@ -196,7 +187,7 @@ public class DataManager : IDataManager
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine($"Kļūda lasot iesniegumu: {ex.Message}");
+                                Console.WriteLine($"Error reading submission: {ex.Message}");
                             }
                         }
                         break;
@@ -205,11 +196,45 @@ public class DataManager : IDataManager
         }
         else
         {
-            throw new FileNotFoundException($"Fails netika atrasts: {path}");
+            throw new FileNotFoundException($"File not found: {path}");
         }
     }
 
-    // Metode, kas izveido testa datus
+    // Method to save data to a file
+    public void Save(string path)
+    {
+        using (StreamWriter writer = new StreamWriter(path))
+        {
+            foreach (var person in data.Persons)
+            {
+                if (person is Teacher teacher)
+                {
+                    writer.WriteLine($"Teacher|{teacher.Name}|{teacher.Surname}|{teacher.Gender}|{teacher.ContractDate}");
+                }
+                else if (person is Student student)
+                {
+                    writer.WriteLine($"Student|{student.Name}|{student.Surname}|{student.Gender}|{student.StudentIdNumber}");
+                }
+            }
+
+            foreach (var course in data.Courses)
+            {
+                writer.WriteLine($"Course|{course.Name}|{course.Teacher.Name}|{course.Teacher.Surname}");
+            }
+
+            foreach (var assignment in data.Assignments)
+            {
+                writer.WriteLine($"Assignment|{assignment.Deadline}|{assignment.Course.Name}|{assignment.Description}");
+            }
+
+            foreach (var submission in data.Submissions)
+            {
+                writer.WriteLine($"Submission|{submission.Assignment.Description}|{submission.Student.Name}|{submission.Student.Surname}|{submission.SubmissionTime}|{submission.Score}");
+            }
+        }
+    }
+
+    // Method to create test data
     public void CreateTestData()
     {
         var teacher1 = new Teacher("Gatis", "Murnieks", Gender.Man, DateTime.Now.AddYears(-5));
@@ -239,44 +264,23 @@ public class DataManager : IDataManager
         data.Submissions.Add(submission2);
     }
 
-    // Metode, kas restartē datus
+    // Method to reset data
     public void Reset()
     {
         data = new DataCollection();
     }
 
-    // Metodes, lai pievienotu un noņemtu datus
-    public void AddPerson(Person person)
+    // Print method for IDataManager interface
+    public string Print()
     {
-        data.Persons.Add(person);
+        return string.Join(Environment.NewLine,
+            data.Persons.Select(p => p.ToString()).Concat(
+            data.Courses.Select(c => c.ToString())).Concat(
+            data.Assignments.Select(a => a.ToString())).Concat(
+            data.Submissions.Select(s => s.ToString())));
     }
 
-    public void AddCourse(Course course)
-    {
-        data.Courses.Add(course);
-    }
-
-    public void AddAssignment(Assignment assignment)
-    {
-        data.Assignments.Add(assignment);
-    }
-
-    public void RemoveAssignment(Assignment assignment)
-    {
-        data.Assignments.Remove(assignment);
-    }
-
-    public void AddSubmission(Submission submission)
-    {
-        data.Submissions.Add(submission);
-    }
-
-    public void RemoveSubmission(Submission submission)
-    {
-        data.Submissions.Remove(submission);
-    }
-
-    // Metodes, lai iegūtu datus
+    // Methods to get collections of data
     public List<Person> GetPersons()
     {
         return data.Persons;
